@@ -1,7 +1,7 @@
 from datetime import date, datetime, timedelta
 from typing import Tuple
 
-from apps.core.models import Configuracao, Reserva
+from apps.core.models import Apartamento, Configuracao, Reserva
 
 
 class ReservaValidationError(Exception):
@@ -71,12 +71,12 @@ class ReservaService:
     def create_reserva(
         data: date,
         hora: datetime.time,
-        apartamento,
+        numero_apartamento,
         andar: int,
     ) -> Reserva:
-        ReservaService.validate_reserva(data, hora, apartamento, andar)
-
         config, _ = Configuracao.objects.get_or_create(id=1)
+        apartamento = Apartamento.objects.get(numero=numero_apartamento)
+
         hora_datetime = datetime.combine(data, hora)
         hora_saida_datetime = hora_datetime + timedelta(
             minutes=config.duracao_reserva_minutos

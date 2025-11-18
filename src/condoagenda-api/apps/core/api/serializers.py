@@ -4,6 +4,8 @@ from apps.core.services import ReservaService, ReservaValidationError
 
 
 class ReservaSerializer(serializers.ModelSerializer):
+    apartamento = serializers.IntegerField()
+
     class Meta:
         model = Reserva
         read_only_fields = ["id", "hora_saida"]
@@ -13,13 +15,13 @@ class ReservaSerializer(serializers.ModelSerializer):
         data = attrs.get("data")
         hora = attrs.get("hora")
         andar = attrs.get("andar")
-        apartamento = attrs.get("apartamento")
+        numero_apartamento = attrs.get("apartamento")
 
-        if not data or not hora or not apartamento:
+        if not data or not hora or not numero_apartamento:
             return attrs
 
         try:
-            ReservaService.validate_reserva(data, hora, apartamento, andar)
+            ReservaService.validate_reserva(data, hora, numero_apartamento, andar)
         except ReservaValidationError as e:
             if e.field:
                 raise serializers.ValidationError({e.field: e.message})
@@ -30,10 +32,10 @@ class ReservaSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         data = validated_data["data"]
         hora = validated_data["hora"]
-        apartamento = validated_data["apartamento"]
+        numero_apartamento = validated_data["apartamento"]
         andar = validated_data.get("andar", 0)
 
-        return ReservaService.create_reserva(data, hora, apartamento, andar)
+        return ReservaService.create_reserva(data, hora, numero_apartamento, andar)
 
 
 class ListarSlotsDisponiveisRequestSerializer(serializers.Serializer):

@@ -57,8 +57,9 @@ def get_slots(dia: date, andar: int):
 def create_reservation(request):
     serializer = ReservaSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
-    reserva = serializer.save()
-    return Response(ReservaSerializer(reserva).data, status=status.HTTP_201_CREATED)
+    serializer.save()
+
+    return Response(status=status.HTTP_201_CREATED)
 
 
 @api_view(["GET"])

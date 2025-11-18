@@ -2,6 +2,7 @@ import asyncio
 from datetime import datetime
 from django.core.management.base import BaseCommand
 from django.utils import timezone
+from asgiref.sync import sync_to_async
 from apps.core.models import Reserva, Configuracao
 
 from apps.remimders.whatsapp.client import WhatsAppClient
@@ -27,9 +28,11 @@ class Command(BaseCommand):
     async def send_entrada_reminders(self, config: Configuracao):
         now = timezone.now()
 
-        reservas = Reserva.objects.filter(
-            enviar_lembrete=True,
-            lembrete_entrada_enviado=False,
+        reservas = await sync_to_async(list)(
+            Reserva.objects.filter(
+                enviar_lembrete=True,
+                lembrete_entrada_enviado=False,
+            )
         )
 
         for reserva in reservas:
@@ -40,20 +43,25 @@ class Command(BaseCommand):
             time_diff = (reserva_datetime - now).total_seconds() / 60
 
             if 0 <= time_diff <= config.tempo_lembrete_entrada_minutos:
+                apartamento_numero = await sync_to_async(
+                    lambda: reserva.apartamento.numero
+                )()
+                andar_display = await sync_to_async(reserva.get_andar_display)()
+
                 message = (
                     f"🏊 Lembrete de Reserva\n\n"
-                    f"Sua reserva no {reserva.get_andar_display()} está próxima!\n"
+                    f"Sua reserva no {andar_display} está próxima!\n"
                     f"Data: {reserva.data.strftime('%d/%m/%Y')}\n"
                     f"Horário de entrada: {reserva.hora.strftime('%H:%M')}\n"
-                    f"Apartamento: {reserva.apartamento.numero}"
+                    f"Apartamento: {apartamento_numero}"
                 )
 
                 try:
-                    await self.whatsapp_client.send_message(
-                        reserva.phone_number, message
+                    await self.whatsapp_client.send_plain_text_message(
+                        message=message, phone_number=reserva.phone_number
                     )
                     reserva.lembrete_entrada_enviado = True
-                    reserva.save()
+                    await sync_to_async(reserva.save)()
                     self.stdout.write(
                         self.style.SUCCESS(
                             f"Lembrete de entrada enviado para reserva #{reserva.id}"
@@ -69,9 +77,11 @@ class Command(BaseCommand):
     async def send_saida_reminders(self, config: Configuracao):
         now = timezone.now()
 
-        reservas = Reserva.objects.filter(
-            enviar_lembrete=True,
-            lembrete_saida_enviado=False,
+        reservas = await sync_to_async(list)(
+            Reserva.objects.filter(
+                enviar_lembrete=True,
+                lembrete_saida_enviado=False,
+            ).exclude(hora_saida__isnull=True)
         )
 
         for reserva in reservas:
@@ -82,19 +92,21 @@ class Command(BaseCommand):
             time_diff = (reserva_saida_datetime - now).total_seconds() / 60
 
             if 0 <= time_diff <= config.tempo_lembrete_saida_minutos:
+                andar_display = await sync_to_async(reserva.get_andar_display)()
+
                 message = (
                     f"⏰ Lembrete de Saída\n\n"
-                    f"Sua reserva no {reserva.get_andar_display()} está próxima do fim!\n"
+                    f"Sua reserva no {andar_display} está próxima do fim!\n"
                     f"Horário de saída: {reserva.hora_saida.strftime('%H:%M')}\n"
                     f"Por favor, organize-se para liberar o espaço."
                 )
 
                 try:
-                    await self.whatsapp_client.send_message(
+                    await self.whatsapp_client.send_plain_text_message(
                         reserva.phone_number, message
                     )
                     reserva.lembrete_saida_enviado = True
-                    reserva.save()
+                    await sync_to_async(reserva.save)()
                     self.stdout.write(
                         self.style.SUCCESS(
                             f"Lembrete de saída enviado para reserva #{reserva.id}"
@@ -109,7 +121,7 @@ class Command(BaseCommand):
 
     async def process_reminders(self):
         try:
-            config, _ = Configuracao.objects.get_or_create(id=1)
+            config, _ = await sync_to_async(Configuracao.objects.get_or_create)(id=1)
             await self.send_entrada_reminders(config)
             await self.send_saida_reminders(config)
         except Exception as e:

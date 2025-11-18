@@ -14,6 +14,9 @@ class Configuracao(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    def __str__(self):
+        return f"Configuração {self.hora_inicio:%H:%M} - {self.hora_fim:%H:%M}"
+
     class Meta:
         verbose_name = "Configuração"
         verbose_name_plural = "Configurações"
@@ -44,7 +47,7 @@ class Reserva(models.Model):
 
     apartamento = models.ForeignKey(Apartamento, on_delete=models.CASCADE)
     andar = models.IntegerField(default=Andar.TERRAS, choices=Andar.choices)
-    phone_number = models.CharField(max_length=PHONE_NUMBER_MAX_LENGTH)
+    phone_number = models.CharField(max_length=PHONE_NUMBER_MAX_LENGTH, blank=True)
 
     lembrete_entrada_enviado = models.BooleanField(default=False)
     lembrete_saida_enviado = models.BooleanField(default=False)
@@ -55,7 +58,7 @@ class Reserva(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.data:%d/%m/%Y} {self.hora:%H:%M} - {self.apartamento} - {self.get_andar_display()}"
+        return f"#{self.id} {self.data:%d/%m/%Y} {self.hora:%H:%M} - {self.apartamento} - {self.get_andar_display()}"
 
     class Meta:
         verbose_name = "Reserva"
