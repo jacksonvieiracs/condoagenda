@@ -40,7 +40,8 @@ class Reserva(models.Model):
 
     data = models.DateField()
     hora = models.TimeField()
-    hora_saida = models.TimeField(null=True, blank=True)
+    hora_saida = models.TimeField()
+
     apartamento = models.ForeignKey(Apartamento, on_delete=models.CASCADE)
     andar = models.IntegerField(default=Andar.TERRAS, choices=Andar.choices)
     phone_number = models.CharField(max_length=PHONE_NUMBER_MAX_LENGTH)
@@ -48,7 +49,7 @@ class Reserva(models.Model):
     lembrete_entrada_enviado = models.BooleanField(default=False)
     lembrete_saida_enviado = models.BooleanField(default=False)
 
-    enviar_lembrete = models.BooleanField(default=False)
+    enviar_lembrete = models.BooleanField(default=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
