@@ -1,0 +1,2 @@
+- [ ] Remimbers module based on the configuration of the users. run a cronjob each minute a verify if have some message to send.
+    - [ ] Retry strategies

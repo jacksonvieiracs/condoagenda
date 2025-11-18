@@ -36,11 +36,19 @@ class Andar(models.IntegerChoices):
 
 
 class Reserva(models.Model):
+    PHONE_NUMBER_MAX_LENGTH = 13
+
     data = models.DateField()
     hora = models.TimeField()
     hora_saida = models.TimeField(null=True, blank=True)
     apartamento = models.ForeignKey(Apartamento, on_delete=models.CASCADE)
     andar = models.IntegerField(default=Andar.TERRAS, choices=Andar.choices)
+    phone_number = models.CharField(max_length=PHONE_NUMBER_MAX_LENGTH)
+
+    lembrete_entrada_enviado = models.BooleanField(default=False)
+    lembrete_saida_enviado = models.BooleanField(default=False)
+
+    enviar_lembrete = models.BooleanField(default=False)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
