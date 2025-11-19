@@ -1,0 +1,27 @@
+[project]
+name = "condoagenda"
+version = "0.1.0"
+description = "A whatsapp workflow builder"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi[standard]>=0.118.0",
+    "pydantic>=2.11.10",
+    "pytest-cov>=7.0.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.2",
+    "ruff>=0.14.3",
+]
+
+[tool.ruff] 
+line-length = 80
+
+[tool.ruff.lint]
+select = ["F", "E", "W", "N", "I", "ANN"]
+ignore = ["E501", "ANN101", "ANN102", "ANN401", "ANN201"]
+
+[tool.ruff.lint.per-file-ignores] 
+"__init__.py" = ["F401"] 
