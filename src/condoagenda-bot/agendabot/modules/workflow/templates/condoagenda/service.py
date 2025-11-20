@@ -17,6 +17,9 @@ class Slot(BaseModel):
     end: time
     available: bool
 
+    def __str__(self) -> str:
+        return f"{self.start:%H:%M} as {self.end:%H:%M}"
+
 
 class ListarHorariosResponse(BaseModel):
     slots: list[Slot]
@@ -28,9 +31,17 @@ class CriarReservaResponse(BaseModel):
     message: str | None = None
 
 
+def format_date_to_api(date: date) -> str:
+    return date.strftime("%Y-%m-%d")
+
+
+def format_time_to_api(time: time) -> str:
+    return time.strftime("%H:%M")
+
+
 class CondoAgendaApiService:
     BASE_URL = "http://localhost:8000/api"
-    TIMEOUT = 30.0  # 5 seconds
+    TIMEOUT_IN_SECONDS = 10
 
     @staticmethod
     async def listar_horarios_disponiveis(
@@ -38,13 +49,12 @@ class CondoAgendaApiService:
     ) -> ListarHorariosResponse:
         try:
             async with httpx.AsyncClient(
-                timeout=CondoAgendaApiService.TIMEOUT
+                timeout=CondoAgendaApiService.TIMEOUT_IN_SECONDS
             ) as client:
                 response = await client.get(
                     f"{CondoAgendaApiService.BASE_URL}/reservas/listar/",
-                    params={"data": "2025-11-19", "andar": 0},
+                    params={"data": format_date_to_api(date), "andar": andar},
                 )
-                print(response.json())
 
                 if response.status_code == 200:
                     data = response.json()
@@ -64,8 +74,8 @@ class CondoAgendaApiService:
     async def criar_reserva(reservation: Reservation) -> CriarReservaResponse:
         try:
             payload = {
-                "data": reservation.data.isoformat(),
-                "hora": reservation.hora.isoformat(),
+                "data": format_date_to_api(reservation.data),
+                "hora": format_time_to_api(reservation.hora),
                 "apartamento": reservation.apartamento,
                 "andar": reservation.andar,
             }

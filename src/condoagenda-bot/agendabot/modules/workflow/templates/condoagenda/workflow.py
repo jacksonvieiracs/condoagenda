@@ -32,10 +32,10 @@ class CondoAgendaSteps(StrEnum):
     AGENDAMENTO_ANDAR = "bloco"
     AGENDAMENTO_DATA = "data"
     AGENDAMENTO_HORA = "hora"
+    AGENDAMENTO_RESUMO = "agendamento_resumo"
     AGENDAMENTO_CONFIRMACAO = "agendamento_confirmacao"
     AGENDAMENTO_REINICIAR = "agendamento_reiniciar"
     AGENDAMENTO_CANCELAR = "agendamento_cancelar"
-    AGENDAMENTO_RESUMO = "agendamento_resumo"
 
     # workflow meus agendamentos
     MEUS_AGENDAMENTOS = "meus_agendamentos"
@@ -77,7 +77,9 @@ def create_menu_step():
     return step
 
 
-async def load_resumo_agendamento(values: dict[str, str] | None) -> WorkflowStep:
+async def load_resumo_agendamento(
+    values: dict[str, str] | None,
+) -> WorkflowStep:
     if not values:
         values = {}
 
@@ -153,8 +155,13 @@ async def load_hours_for_current_date(
     data = values.get(CondoAgendaSteps.AGENDAMENTO_DATA, "")
     andar = 0
 
+    day, month = data.split("/")
+    data_with_year = datetime(
+        year=datetime.now().year, month=int(month), day=int(day)
+    ).date()
+
     response = await CondoAgendaApiService.listar_horarios_disponiveis(
-        date=data, andar=andar
+        date=data_with_year, andar=andar
     )
 
     step = (
@@ -165,7 +172,10 @@ async def load_hours_for_current_date(
 
     for slot in response.slots:
         if slot.available:
-            step = step.with_option(slot.start, display_value=slot.start)
+            step = step.with_option(
+                slot.start,
+                display_value=str(slot),
+            )
 
     return step.build()
 
