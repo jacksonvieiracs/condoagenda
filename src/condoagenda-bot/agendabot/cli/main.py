@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import textwrap
 
 from agendabot.modules.workflow.core import WorkflowStep
@@ -16,6 +17,8 @@ from agendabot.modules.workflow.templates.condoagenda.workflow import (
     # CondoAgendaSteps,
     create_condoagenda_workflow,
 )
+
+logging.basicConfig(level=logging.INFO)
 
 
 class X(IOrchestratorEventHandler):
@@ -132,7 +135,9 @@ async def main_async():
         output_handler=cli_output_handler,
         template_message_render=default_template_renderer,
     )
-    orchestrator = create_condoagenda_workflow(event_handler, workflow_action_handler)
+    orchestrator = create_condoagenda_workflow(
+        event_handler, workflow_action_handler
+    )
 
     while True:
         user_input = await asyncio.to_thread(input, "USER: ")

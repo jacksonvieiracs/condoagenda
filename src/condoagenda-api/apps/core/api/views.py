@@ -20,8 +20,8 @@ def get_slots(dia: date, andar: int):
     fim = datetime.combine(dia, configuracao.hora_fim)
     delta = timedelta(minutes=configuracao.duracao_reserva_minutos)
 
-    start_of_week, end_of_week = ReservaService.get_current_week_range()
-    is_out_of_week = dia < start_of_week or dia > end_of_week
+    # start_of_week, end_of_week = ReservaService.get_current_week_range()
+    # is_out_of_week = dia < start_of_week or dia > end_of_week
 
     reservas = Reserva.objects.filter(data=dia, andar=andar)
     horarios_reservados = set(reservas.values_list("hora", flat=True))
@@ -37,9 +37,10 @@ def get_slots(dia: date, andar: int):
 
         is_odd_hour = ReservaService.is_odd_hour(inicio_slot)
         is_reserved = inicio_slot in horarios_reservados
-        is_available = (
-            is_odd_hour and not is_reserved and not is_passed and not is_out_of_week
-        )
+        # is_available = (
+        #     is_odd_hour and not is_reserved and not is_passed and not is_out_of_week
+        # )
+        is_available = is_odd_hour and not is_reserved and not is_passed
 
         slots.append(
             {

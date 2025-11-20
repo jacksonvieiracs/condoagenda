@@ -1,8 +1,11 @@
+import logging
 from datetime import date, time
 from typing import Optional
 
 import httpx
 from pydantic import BaseModel
+
+logger = logging.getLogger(__name__)
 
 
 class Reservation(BaseModel):
@@ -55,19 +58,21 @@ class CondoAgendaApiService:
                     f"{CondoAgendaApiService.BASE_URL}/reservas/listar/",
                     params={"data": format_date_to_api(date), "andar": andar},
                 )
+                response.raise_for_status()
+                data = response.json()
+                logger.info(f"Horários disponíveis: {data}")
+                return ListarHorariosResponse(**data)
 
-                if response.status_code == 200:
-                    data = response.json()
-                    return ListarHorariosResponse(**data)
-
-                return ListarHorariosResponse(
-                    slots=[], error="Erro ao buscar horários"
-                )
+        except httpx.HTTPStatusError as e:
+            logger.error(f"Erro ao buscar horários: {str(e)}")
+            return ListarHorariosResponse(
+                slots=[], error="Erro ao buscar horários"
+            )
 
         except Exception as e:
-            print(e)
+            logger.error(f"Erro inesperado ao buscar horários: {str(e)}")
             return ListarHorariosResponse(
-                slots=[], error=f"Erro inesperado: {str(e)}"
+                slots=[], error="Erro inesperado ao buscar horários"
             )
 
     @staticmethod
@@ -88,15 +93,15 @@ class CondoAgendaApiService:
                     json=payload,
                 )
 
-                if response.status_code == 201:
-                    return CriarReservaResponse(is_success=True, message=None)
+                response.raise_for_status()
+                return CriarReservaResponse(**response.json())
 
-                return CriarReservaResponse(
-                    is_success=False,
-                    message="Erro ao criar reserva",
-                )
+        except httpx.HTTPStatusError as e:
+            logger.error(f"Erro ao criar reserva: {str(e)}")
+            return CriarReservaResponse(is_success=False, message=str(e))
+
         except Exception as e:
+            logger.error(f"Erro inesperado ao criar reserva: {str(e)}")
             return CriarReservaResponse(
-                is_success=False,
-                message=f"Erro inesperado: {str(e)}",
+                is_success=False, message="Erro inesperado ao criar reserva"
             )
