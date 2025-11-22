@@ -37,6 +37,10 @@ class CondoAgendaSteps(StrEnum):
     AGENDAMENTO_REINICIAR = "agendamento_reiniciar"
     AGENDAMENTO_CANCELAR = "agendamento_cancelar"
 
+    GATILHO_CONTINUACAO = "gatilho_continuacao"
+    NOVO_AGENDAMENTO = "novo_agendamento"
+    ENCERRAR_ATENDIMENTO = "encerrar_atendimento"
+
     # workflow meus agendamentos
     MEUS_AGENDAMENTOS = "meus_agendamentos"
 
@@ -182,11 +186,29 @@ def create_confirmacao_agendamento_workflow(
     step = step_factory.create_send_message(
         id=CondoAgendaSteps.AGENDAMENTO_CONFIRMACAO,
         name="Confirmação de agendamento",
-        message="✅ *Agendamento realizado com sucesso.*\n\n"
-        "Caso deseje fazer outro agendamento, basta digitar *#AGENDAR* para agendar um novo horário.\n\n"
-        "Até logo!",
+        message="✅ *Agendamento confirmado com sucesso.*"
     )
-    workflow.add_steps([step])
+
+    step_continuacao = (
+        PoolBuilder()
+        .decision()
+        .with_id(CondoAgendaSteps.GATILHO_CONTINUACAO)
+        .with_name("Gatilho de continuidade")
+        .with_question("Te ajudo em algo mais?")
+        .with_option(
+            "Agendar outro horário",
+            display_value="📅 Agendar outro horário",
+            reference_id=CondoAgendaSteps.NOVO_AGENDAMENTO,
+        )
+        .with_option(
+            "Encerrar atendimento",
+            display_value="❌ Encerrar atendimento",
+            reference_id=CondoAgendaSteps.ENCERRAR_ATENDIMENTO,
+        )
+        .build()
+    )
+
+    workflow.add_steps([step, step_continuacao])
     return workflow
 
 
@@ -305,6 +327,33 @@ def create_meus_agendamentos_workflow(
     return workflow
 
 
+def create_novo_agendamento_workflow(
+    step_factory: WorkflowStepFactory,
+) -> Workflow:
+    workflow = Workflow(id=CondoAgendaSteps.NOVO_AGENDAMENTO)
+    step = step_factory.create_send_message(
+        id=CondoAgendaSteps.NOVO_AGENDAMENTO,
+        behavior=WorkflowStepBehavior.RESTART_WORKFLOW,
+        name="Novo agendamento",
+        message="Perfeito! Vamos começar um novo agendamento."
+    )
+    workflow.add_steps([step])
+    return workflow
+
+
+def create_encerrar_atendimento_workflow(
+    step_factory: WorkflowStepFactory,
+) -> Workflow:
+    workflow = Workflow(id=CondoAgendaSteps.ENCERRAR_ATENDIMENTO)
+    step = step_factory.create_send_message(
+        id=CondoAgendaSteps.ENCERRAR_ATENDIMENTO,
+        name="Encerrar atendimento",
+        message="👋 Até logo! Foi um prazer ajudá-lo(a). Tenha um ótimo dia! ☀️"
+    )
+    workflow.add_steps([step])
+    return workflow
+
+
 def create_condoagenda_workflow(
     event_handler: IOrchestratorEventHandler,
     action_handler: IOrchestratorActionHandler,
@@ -333,6 +382,10 @@ def create_condoagenda_workflow(
     workflow_reiniciar_atendimento = create_reiniciar_atendimento_workflow(
         step_factory
     )
+    workflow_novo_agendamento = create_novo_agendamento_workflow(step_factory)
+    workflow_encerrar_atendimento = create_encerrar_atendimento_workflow(
+        step_factory
+    )
 
     workflow_orchestrator.load(
         [
@@ -340,6 +393,8 @@ def create_condoagenda_workflow(
             workflow_meus_agendamentos,
             workflow_confirmacao_agendamento,
             workflow_reiniciar_atendimento,
+            workflow_novo_agendamento,
+            workflow_encerrar_atendimento,
         ]
     )
 

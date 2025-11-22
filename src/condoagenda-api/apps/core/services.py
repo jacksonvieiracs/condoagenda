@@ -24,7 +24,7 @@ class ReservaService:
         return hora.hour % 2 != 0
 
     @staticmethod
-    def validate_reserva(data: date, hora: datetime.time, apartamento, andar: int):
+    def validate_reserva(data: date, hora: datetime.time, numero_apartamento: int, andar: int):
         config, _ = Configuracao.objects.get_or_create(id=1)
 
         start_of_week, end_of_week = ReservaService.get_current_week_range()
@@ -51,7 +51,7 @@ class ReservaService:
             )
 
         reservas_apartamento_no_dia = Reserva.objects.filter(
-            data=data, apartamento=apartamento
+            data=data, apartamento__numero=numero_apartamento
         ).count()
 
         max_por_apartamento = config.quantidade_agendamento_por_apartamento

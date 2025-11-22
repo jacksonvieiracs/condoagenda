@@ -7,10 +7,15 @@ from rest_framework.response import Response
 from apps.core.models import Configuracao, Reserva
 from apps.core.services import ReservaService
 
+from django.utils import timezone
+
 from .serializers import (
+    CriarReservaRequestSerializer,
+    ListarDatasDisponiveisRequestSerializer,
+    ListarDatasDisponiveisResponseSerializer,
     ListarSlotsDisponiveisRequestSerializer,
     ListarSlotsDisponiveisResponseSerializer,
-    ReservaSerializer,
+    ListarMinhasReservasResponseSerializer,
 )
 
 
@@ -22,7 +27,6 @@ def get_slots(dia: date, andar: int):
 
     # start_of_week, end_of_week = ReservaService.get_current_week_range()
     # is_out_of_week = dia < start_of_week or dia > end_of_week
-
     reservas = Reserva.objects.filter(data=dia, andar=andar)
     horarios_reservados = set(reservas.values_list("hora", flat=True))
 
@@ -54,9 +58,33 @@ def get_slots(dia: date, andar: int):
     return slots
 
 
+def get_dates(andar: int):
+    today = timezone.now().date()
+    current_weekday = today.weekday()
+    start_of_week = today - timedelta(days=current_weekday)
+    dates = [start_of_week + timedelta(days=i) for i in range(7)]
+
+    datas = []
+    for cdate in dates:
+        slots = get_slots(cdate, andar)
+        quantidade_slots_disponiveis = len(
+            [slot for slot in slots if slot["available"]]
+        )
+
+        datas.append(
+            {
+                "data": cdate,
+                "quantidade_slots_disponiveis": quantidade_slots_disponiveis,
+                "disponivel": quantidade_slots_disponiveis > 0,
+            }
+        )
+
+    return datas
+
+
 @api_view(["POST"])
 def create_reservation(request):
-    serializer = ReservaSerializer(data=request.data)
+    serializer = CriarReservaRequestSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
     serializer.save()
 
@@ -77,5 +105,37 @@ def list_slots_available(request):
         ListarSlotsDisponiveisResponseSerializer(
             {"slots": slots, "data": dia, "andar": andar}
         ).data,
+        status=status.HTTP_200_OK,
+    )
+
+
+@api_view(["GET"])
+def list_dates_available(request):
+    serializer = ListarDatasDisponiveisRequestSerializer(data=request.query_params)
+    serializer.is_valid(raise_exception=True)
+
+    data = serializer.validated_data
+    andar = data["andar"]
+
+    datas = get_dates(andar)
+    return Response(
+        ListarDatasDisponiveisResponseSerializer({"datas": datas}).data,
+        status=status.HTTP_200_OK,
+    )
+
+
+@api_view(["GET"])
+def my_reservations(request):
+    numero_apartamento = request.query_params.get("numero_apartamento")
+    if not numero_apartamento:
+        return Response(
+            {"error": "Número do apartamento é obrigatório"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    reservations = Reserva.objects.filter(apartamento__numero=int(numero_apartamento))
+
+    return Response(
+        ListarMinhasReservasResponseSerializer({"reservas": reservations}).data,
         status=status.HTTP_200_OK,
     )
