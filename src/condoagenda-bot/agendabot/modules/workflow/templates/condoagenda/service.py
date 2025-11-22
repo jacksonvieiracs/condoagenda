@@ -86,7 +86,7 @@ class CondoAgendaApiService:
             }
 
             async with httpx.AsyncClient(
-                timeout=CondoAgendaApiService.TIMEOUT
+                timeout=CondoAgendaApiService.TIMEOUT_IN_SECONDS
             ) as client:
                 response = await client.post(
                     f"{CondoAgendaApiService.BASE_URL}/reservas/",
@@ -94,7 +94,9 @@ class CondoAgendaApiService:
                 )
 
                 response.raise_for_status()
-                return CriarReservaResponse(**response.json())
+                return CriarReservaResponse(
+                    is_success=True, message="Reserva criada com sucesso"
+                )
 
         except httpx.HTTPStatusError as e:
             logger.error(f"Erro ao criar reserva: {str(e)}")

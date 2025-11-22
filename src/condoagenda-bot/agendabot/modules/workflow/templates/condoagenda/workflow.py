@@ -173,7 +173,7 @@ async def load_hours_for_current_date(
     for slot in response.slots:
         if slot.available:
             step = step.with_option(
-                slot.start,
+                slot.start.strftime("%H:%M"),
                 display_value=str(slot),
             )
 

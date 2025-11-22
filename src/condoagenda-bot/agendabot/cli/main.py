@@ -1,4 +1,5 @@
 import asyncio
+import datetime
 import logging
 import textwrap
 
@@ -13,8 +14,12 @@ from agendabot.modules.workflow.interfaces.output_handler import IOutputHandler
 from agendabot.modules.workflow.interfaces.template_message_render import (
     ITemplateMessageRender,
 )
+from agendabot.modules.workflow.templates.condoagenda.service import (
+    CondoAgendaApiService,
+    Reservation,
+)
 from agendabot.modules.workflow.templates.condoagenda.workflow import (
-    # CondoAgendaSteps,
+    CondoAgendaSteps,
     create_condoagenda_workflow,
 )
 
@@ -31,7 +36,32 @@ class X(IOrchestratorEventHandler):
             await self._render_progress(data)
 
         if event in (OrchestratorEvent.WORKFLOW_ENDED,):
-            print("Processo finalizado!")
+            data_reserva = data.values.get(CondoAgendaSteps.AGENDAMENTO_DATA)
+            hora_reserva = data.values.get(CondoAgendaSteps.AGENDAMENTO_HORA)
+            apartamento_reserva = data.values.get(CondoAgendaSteps.APARTAMENTO)
+            andar_reserva = 0
+
+            agora = datetime.datetime.now()
+            dia, mes = data_reserva.split("/")
+            hora, minuto = hora_reserva.split(":")
+
+            data_reserva = datetime.date(
+                year=agora.year, month=int(mes), day=int(dia)
+            )
+            hora_reserva = datetime.time(hour=int(hora), minute=int(minuto))
+
+            reserva = Reservation(
+                data=data_reserva,
+                hora=hora_reserva,
+                apartamento=int(apartamento_reserva),
+                andar=andar_reserva,
+            )
+            response = await CondoAgendaApiService.criar_reserva(reserva)
+            if response.is_success:
+                print("Reserva criada com sucesso")
+            else:
+                print("Erro ao criar reserva")
+                print(response.message)
 
 
 class DefaultTemplateMessageRender(ITemplateMessageRender):

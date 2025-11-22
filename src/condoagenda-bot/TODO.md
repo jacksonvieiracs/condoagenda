@@ -10,3 +10,11 @@
 # --- V0.5
 - [ ] Log interno para visualizar o que ocorreu a cada etapa em qual etapa atual do workflow...
 - [ ] Enquetes
+
+# -- Organizar minhas notas
+- [ ] Especializar na criação de CRM/Chat bots (Production ready)
+- [ ] Aprender com os melhores projetos do mercado (Open source world)
+
+# -- Limitações da versão atual
+- [ ] O event handler não é necessário e ele é limitado pelas ações acho que ele é bom para outros tipos de integração como o progress, 
+porém regras de negocio pela flexibilidade de controlar o workflow seria melhor uma novo Nó
