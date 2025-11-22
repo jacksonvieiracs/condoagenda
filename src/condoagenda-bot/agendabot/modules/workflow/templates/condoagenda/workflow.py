@@ -49,7 +49,7 @@ def create_boas_vindas_step(step_factory: WorkflowStepFactory):
         "• Realizar agendamentos\n"
         "• Ver seus agendamentos\n\n"
         "É simples: escolha uma opção no menu e siga as instruções. "
-        "A qualquer momento, digite *#encerrar* para finalizar.",
+        "A qualquer momento, digite *#ENCERRAR* para finalizar.",
     )
     step.id = CondoAgendaSteps.BOAS_VINDAS
     return step
@@ -87,12 +87,7 @@ async def load_resumo_agendamento(
     data = values.get(CondoAgendaSteps.AGENDAMENTO_DATA, "")
     hora = values.get(CondoAgendaSteps.AGENDAMENTO_HORA, "")
 
-    resume_message = (
-        f"*Apartamento:* {apartamento}\n\n"
-        "✅ Agendamento realizado com sucesso\n"
-        f"✅ {data}\n"
-        f"✅ {hora}\n"
-    )
+    resume_message = f"*Apartamento:* {apartamento}\n\n✅ {data}\n✅ {hora}\n\n*Confirme abaixo se está tudo certo.*"
 
     step = WorkflowStepFactory().create_send_message(
         id=CondoAgendaSteps.AGENDAMENTO_RESUMO,
@@ -188,8 +183,8 @@ def create_confirmacao_agendamento_workflow(
         id=CondoAgendaSteps.AGENDAMENTO_CONFIRMACAO,
         name="Confirmação de agendamento",
         message="✅ *Agendamento realizado com sucesso.*\n\n"
-        "Caso deseje realizar outro agendamento, basta digitar #AGENDAR para voltar ao menu inicial\n\n"
-        "Obrigado pela preferência!",
+        "Caso deseje fazer outro agendamento, basta digitar *#AGENDAR* para agendar um novo horário.\n\n"
+        "Até logo!",
     )
     workflow.add_steps([step])
     return workflow

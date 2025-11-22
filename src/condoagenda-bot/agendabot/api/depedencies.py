@@ -1,3 +1,4 @@
+import datetime
 import os
 from functools import lru_cache
 
@@ -13,15 +14,24 @@ from agendabot.modules.workflow.interfaces import (
 from agendabot.modules.workflow.interfaces.orchestrator_event_handler import (
     OrchestratorEvent,
 )
-from agendabot.modules.workflow.templates.mrfox import MrFoxSteps
+from agendabot.modules.workflow.templates.condoagenda.service import (
+    CondoAgendaApiService,
+    Reservation,
+)
+from agendabot.modules.workflow.templates.condoagenda.workflow import (
+    CondoAgendaSteps,
+)
 
 EVOLUTION_API_KEY = os.getenv("EVOLUTION_API_KEY", "")
 EVOLUTION_BASE_URL = os.getenv("EVOLUTION_BASE_URL", "")
+EVOLUTION_DEFAULT_INSTANCE = os.getenv(
+    "EVOLUTION_DEFAULT_INSTANCE", "condoagenda"
+)
 
 
 class X(IOrchestratorEventHandler):
     async def _render_progress(self, data: WorkflowData) -> None:
-        if data.workflow_id == MrFoxSteps.AGENDAMENTO:
+        if data.workflow_id == CondoAgendaSteps.AGENDAMENTO:
             if not data.steps:
                 return
 
@@ -42,6 +52,35 @@ class X(IOrchestratorEventHandler):
 
         if event in (OrchestratorEvent.WORKFLOW_ENDED,):
             print("Processo finalizado!")
+
+        if event in (OrchestratorEvent.WORKFLOW_ENDED,):
+            data_reserva = data.values.get(CondoAgendaSteps.AGENDAMENTO_DATA)
+            hora_reserva = data.values.get(CondoAgendaSteps.AGENDAMENTO_HORA)
+            apartamento_reserva = data.values.get(CondoAgendaSteps.APARTAMENTO)
+            andar_reserva = 0
+
+            agora = datetime.datetime.now()
+            dia, mes = data_reserva.split("/")
+            hora, minuto = hora_reserva.split(":")
+
+            data_reserva = datetime.date(
+                year=agora.year, month=int(mes), day=int(dia)
+            )
+            hora_reserva = datetime.time(hour=int(hora), minute=int(minuto))
+
+            reserva = Reservation(
+                data=data_reserva,
+                hora=hora_reserva,
+                apartamento=int(apartamento_reserva),
+                andar=andar_reserva,
+            )
+            response = await CondoAgendaApiService.criar_reserva(reserva)
+
+            # TODO: Melhorar isso deve ser um logger interno para o bot
+            if response.is_success:
+                print("Reserva criada com sucesso")
+            else:
+                print("Erro ao criar reserva")
 
 
 class DefaultTemplateMessageRender(ITemplateMessageRender):
@@ -113,7 +152,9 @@ class WaZapOutputHandler(IOutputHandler):
 @lru_cache()
 def get_whatsapp_client() -> WhatsAppClient:
     return WhatsAppClient(
-        api_key=EVOLUTION_API_KEY, base_url=EVOLUTION_BASE_URL
+        api_key=EVOLUTION_API_KEY,
+        base_url=EVOLUTION_BASE_URL,
+        default_instance=EVOLUTION_DEFAULT_INSTANCE,
     )
 
 

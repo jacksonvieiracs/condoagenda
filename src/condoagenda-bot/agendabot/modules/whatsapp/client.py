@@ -27,13 +27,13 @@ class GetQRCodeResponse:
 
 
 class WhatsAppClient:
-    def __init__(self, base_url: str, api_key: str):
+    def __init__(self, base_url: str, api_key: str, default_instance: str):
         self._client = httpx.AsyncClient(base_url=base_url)
         self._client.headers = {
             "apiKey": api_key,
             "Content-type": "application/json",
         }
-        self._current_istance = "dev"
+        self._current_istance = default_instance
 
     async def send_plain_text_message(
         self, message: str, phone_number: str

@@ -20,7 +20,9 @@ from agendabot.modules.evolution_api.schemas.message_upsert import (
     MessageUpsertData,
 )
 from agendabot.modules.workflow.orchestrator import WorkflowOrchestrator
-from agendabot.modules.workflow.templates.mrfox import create_mrfox
+from agendabot.modules.workflow.templates.condoagenda.workflow import (
+    create_condoagenda_workflow,
+)
 
 
 class ConnectionStatus(Enum):
@@ -50,6 +52,12 @@ EVOLUTION_API_KEY = os.getenv("EVOLUTION_API_KEY", "")
 EVOLUTION_BASE_URL = os.getenv("EVOLUTION_BASE_URL", "")
 EVOLUTION_DEFAULT_APP = os.getenv("EVOLUTION_DEFAULT_APP", "")
 DEFAULT_TEST_NUMBER = "5584996792143"
+ENVIRONMENT = os.getenv("ENVIRONMENT", "dev")
+
+
+def is_production() -> bool:
+    return ENVIRONMENT == "production"
+
 
 app = FastAPI()
 
@@ -76,7 +84,9 @@ def get_or_create_orchestrator(phone_number: str) -> WorkflowOrchestrator:
     if phone_number not in _orchestrators:
         event_handler = create_event_handler(phone_number)
         action_handler = create_action_handler(phone_number)
-        orchestrator = create_mrfox(event_handler, action_handler)
+        orchestrator = create_condoagenda_workflow(
+            event_handler, action_handler
+        )
         _orchestrators[phone_number] = orchestrator
 
     orchestrator = _orchestrators[phone_number]
@@ -88,8 +98,11 @@ def get_or_create_orchestrator(phone_number: str) -> WorkflowOrchestrator:
 
 
 def should_start_workflow(input: str) -> bool:
-    input_lower = input.lower()
-    return input_lower in ("#iniciar", "#agendar")
+    if is_production():
+        return True
+
+    sanitized_input = input.strip().upper()
+    return sanitized_input == "AGENDAR"
 
 
 def should_finish_workflow(input: str) -> bool:
@@ -147,6 +160,7 @@ async def wpp_webhook(event: str, data: EvolutionApiRequest = Body(...)):
             return
 
         if not orchestrator.is_started and should_start_workflow(message):
+            print("Starting workflow")
             await orchestrator.start()
             return
 
