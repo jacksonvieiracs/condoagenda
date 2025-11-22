@@ -43,6 +43,8 @@ class CondoAgendaSteps(StrEnum):
 
     # workflow meus agendamentos
     MEUS_AGENDAMENTOS = "meus_agendamentos"
+    GATILHO_MEUS_AGENDAMENTOS = "gatilho_meus_agendamentos"
+    VOLTAR_MENU = "voltar_menu"
 
 
 def create_boas_vindas_step(step_factory: WorkflowStepFactory):
@@ -105,6 +107,9 @@ async def load_resumo_agendamento(
 async def load_dates_for_next_7_days(
     values: dict[str, str] | None = None,
 ) -> WorkflowStep:
+    andar = 0
+    response = await CondoAgendaApiService.listar_datas_disponiveis(andar=andar)
+
     now = datetime.now()
     today = now.date()
     dates = []
@@ -119,24 +124,24 @@ async def load_dates_for_next_7_days(
         "Domingo",
     ]
 
-    for i in range(7):
-        date = now + timedelta(days=i)
-        date_only = date.date()
-        weekday = weekdays[date.weekday()]
+    for data_disponivel in response.datas:
+        if data_disponivel.disponivel:
+            date_only = data_disponivel.data
+            weekday = weekdays[date_only.weekday()]
 
-        if date_only == today:
-            description = "Hoje"
-        elif date_only == today + timedelta(days=1):
-            description = "Amanhã"
-        else:
-            description = weekday
+            if date_only == today:
+                description = "Hoje"
+            elif date_only == today + timedelta(days=1):
+                description = "Amanhã"
+            else:
+                description = weekday
 
-        date_value = date.strftime("%d/%m")
-        date_display = f"{date_value} ({description})"
-        dates.append((date_value, date_display))
+            date_value = date_only.strftime("%d/%m")
+            date_display = f"{date_value} ({description})"
+            dates.append((date_value, date_display))
 
     step = (
-        PoolBuilder().with_name("Data").with_question("Qual data você prefere?")
+        PoolBuilder().with_name("Data").with_question("Escolha uma data para agendar")
     )
 
     for date_value, date_display in dates:
@@ -166,7 +171,7 @@ async def load_hours_for_current_date(
     step = (
         PoolBuilder()
         .with_name("Hora")
-        .with_question("Qual horário você prefere?")
+        .with_question("Escolha um horário para agendar")
     )
 
     for slot in response.slots:
@@ -313,6 +318,51 @@ def create_endereco_workflow(step_factory: WorkflowStepFactory) -> Workflow:
     return workflow
 
 
+async def load_meus_agendamentos(
+    values: dict[str, str] | None,
+) -> WorkflowStep:
+    if not values:
+        values = {}
+
+    numero_apartamento = int(values.get(CondoAgendaSteps.APARTAMENTO, ""))
+    
+    response = await CondoAgendaApiService.listar_minhas_reservas(
+        numero_apartamento=numero_apartamento
+    )
+        
+    if response.error:
+        message = f"❌ Erro ao buscar seus agendamentos: {response.error}"
+    elif not response.reservas:
+        message = "📭 Você não possui nenhuma reserva ativa no momento.\n\n"
+    else:
+        weekdays = [
+            "Segunda-feira",
+            "Terça-feira",
+            "Quarta-feira",
+            "Quinta-feira",
+            "Sexta-feira",
+            "Sábado",
+            "Domingo",
+        ]
+        
+        message = "Aqui estão seus horários agendados:\n\n"
+        for reserva in response.reservas:
+            weekday = weekdays[reserva.data.weekday()]
+            data_formatada = reserva.data.strftime("%d/%m")
+            hora_inicio = reserva.hora.strftime("%H:%M")
+            hora_fim = reserva.hora_saida.strftime("%H:%M")
+            
+            message += f"📅 {data_formatada} ({weekday}) - {hora_inicio} às {hora_fim}\n"
+
+    step = WorkflowStepFactory().create_send_message(
+        id=CondoAgendaSteps.MEUS_AGENDAMENTOS,
+        name="Meus agendamentos",
+        message=message,
+    )
+
+    return step
+
+
 def create_meus_agendamentos_workflow(
     step_factory: WorkflowStepFactory,
 ) -> Workflow:
@@ -320,10 +370,32 @@ def create_meus_agendamentos_workflow(
     step = step_factory.create_send_message(
         id=CondoAgendaSteps.MEUS_AGENDAMENTOS,
         name="Meus agendamentos",
-        message="Aqui estão seus agendamentos...",
+        message="",
+        is_template=False,
+        is_lazy=True,
     )
-    step.id = CondoAgendaSteps.MEUS_AGENDAMENTOS
-    workflow.add_steps([step])
+    step.set_mount(load_meus_agendamentos)
+    
+    step_gatilho = (
+        PoolBuilder()
+        .decision()
+        .with_id(CondoAgendaSteps.GATILHO_MEUS_AGENDAMENTOS)
+        .with_name("Gatilho após visualização")
+        .with_question("O que você deseja fazer?")
+        .with_option(
+            "Voltar para o menu",
+            display_value="◀️ Voltar para o menu principal",
+            reference_id=CondoAgendaSteps.VOLTAR_MENU,
+        )
+        .with_option(
+            "Encerrar atendimento",
+            display_value="❌ Encerrar atendimento",
+            reference_id=CondoAgendaSteps.ENCERRAR_ATENDIMENTO,
+        )
+        .build()
+    )
+    
+    workflow.add_steps([step, step_gatilho])
     return workflow
 
 
@@ -336,6 +408,20 @@ def create_novo_agendamento_workflow(
         behavior=WorkflowStepBehavior.RESTART_WORKFLOW,
         name="Novo agendamento",
         message="Perfeito! Vamos começar um novo agendamento."
+    )
+    workflow.add_steps([step])
+    return workflow
+
+
+def create_voltar_menu_workflow(
+    step_factory: WorkflowStepFactory,
+) -> Workflow:
+    workflow = Workflow(id=CondoAgendaSteps.VOLTAR_MENU)
+    step = step_factory.create_send_message(
+        id=CondoAgendaSteps.VOLTAR_MENU,
+        behavior=WorkflowStepBehavior.RESTART_WORKFLOW,
+        name="Voltar para o menu",
+        message="◀️ Voltando para o menu principal..."
     )
     workflow.add_steps([step])
     return workflow
@@ -383,6 +469,7 @@ def create_condoagenda_workflow(
         step_factory
     )
     workflow_novo_agendamento = create_novo_agendamento_workflow(step_factory)
+    workflow_voltar_menu = create_voltar_menu_workflow(step_factory)
     workflow_encerrar_atendimento = create_encerrar_atendimento_workflow(
         step_factory
     )
@@ -394,6 +481,7 @@ def create_condoagenda_workflow(
             workflow_confirmacao_agendamento,
             workflow_reiniciar_atendimento,
             workflow_novo_agendamento,
+            workflow_voltar_menu,
             workflow_encerrar_atendimento,
         ]
     )

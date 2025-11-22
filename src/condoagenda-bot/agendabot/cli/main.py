@@ -41,6 +41,13 @@ class X(IOrchestratorEventHandler):
             apartamento_reserva = data.values.get(CondoAgendaSteps.APARTAMENTO)
             andar_reserva = 0
 
+            # Só deve executar essa lógica de criação caso ele tenha passo pelos passos de agendamento (desafio: verificar se ele passou pelo workflow de agendamento)
+            # Ele não deve criar a reserva apenas quando chegar no final do workflow, mas sim quando ele passos pelos passos de agendamento. o usuario pode ficar em tempo inderminado sem temrinar o workflow 
+            # se seguir essa logica.
+            if not data_reserva or not hora_reserva or not apartamento_reserva:
+                print("❌ Erro ao criar reserva: dados incompletos")
+                return
+
             agora = datetime.datetime.now()
             dia, mes = data_reserva.split("/")
             hora, minuto = hora_reserva.split(":")

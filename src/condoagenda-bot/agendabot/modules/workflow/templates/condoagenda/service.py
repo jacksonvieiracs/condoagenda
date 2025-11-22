@@ -1,3 +1,4 @@
+from dataclasses import Field
 import logging
 from datetime import date, time
 from typing import Optional
@@ -23,6 +24,14 @@ class Slot(BaseModel):
     def __str__(self) -> str:
         return f"{self.start:%H:%M} as {self.end:%H:%M}"
 
+class DataDisponivel(BaseModel):
+    data: date
+    quantidade_slots_disponiveis: int
+    disponivel: bool
+
+class ListarDatasDisponiveisResponse(BaseModel):
+    datas: list[DataDisponivel]
+    error: Optional[str] = None
 
 class ListarHorariosResponse(BaseModel):
     slots: list[Slot]
@@ -32,6 +41,15 @@ class ListarHorariosResponse(BaseModel):
 class CriarReservaResponse(BaseModel):
     is_success: bool
     message: str | None = None
+
+class MinhaReserva(BaseModel):
+    data: date
+    hora: time
+    hora_saida: time
+
+class MinhasReservasResponse(BaseModel):
+    reservas: list[MinhaReserva]
+    error: Optional[str] = None
 
 
 def format_date_to_api(date: date) -> str:
@@ -76,12 +94,34 @@ class CondoAgendaApiService:
             )
 
     @staticmethod
+    async def listar_datas_disponiveis(andar: int) -> ListarDatasDisponiveisResponse:
+        try:
+            async with httpx.AsyncClient(
+                timeout=CondoAgendaApiService.TIMEOUT_IN_SECONDS
+            ) as client:
+                response = await client.get(
+                    f"{CondoAgendaApiService.BASE_URL}/reservas/listar/datas/",
+                    params={"andar": andar},
+                )
+                response.raise_for_status()
+                data = response.json()
+                datas = data["datas"]
+                logger.info(f"Datas disponíveis: {datas}")
+                return ListarDatasDisponiveisResponse(datas=[DataDisponivel(**data) for data in datas])
+        except httpx.HTTPStatusError as e:
+            logger.error(f"Erro ao buscar datas disponíveis: {str(e)}")
+            return ListarDatasDisponiveisResponse(datas=[], error="Erro ao buscar datas disponíveis")
+        except Exception as e:
+            logger.error(f"Erro inesperado ao buscar datas disponíveis: {str(e)}")
+            return ListarDatasDisponiveisResponse(datas=[], error="Erro inesperado ao buscar datas disponíveis")
+
+    @staticmethod
     async def criar_reserva(reservation: Reservation) -> CriarReservaResponse:
         try:
             payload = {
                 "data": format_date_to_api(reservation.data),
                 "hora": format_time_to_api(reservation.hora),
-                "apartamento": reservation.apartamento,
+                "numero_apartamento": reservation.apartamento,
                 "andar": reservation.andar,
             }
 
@@ -99,6 +139,7 @@ class CondoAgendaApiService:
                 )
 
         except httpx.HTTPStatusError as e:
+            print(e.response.json())
             logger.error(f"Erro ao criar reserva: {str(e)}")
             return CriarReservaResponse(is_success=False, message=str(e))
 
@@ -107,3 +148,25 @@ class CondoAgendaApiService:
             return CriarReservaResponse(
                 is_success=False, message="Erro inesperado ao criar reserva"
             )
+
+    @staticmethod
+    async def listar_minhas_reservas(numero_apartamento: int) -> MinhasReservasResponse:
+        try:
+            async with httpx.AsyncClient(
+                timeout=CondoAgendaApiService.TIMEOUT_IN_SECONDS
+            ) as client:
+                response = await client.get(
+                    f"{CondoAgendaApiService.BASE_URL}/reservas/listar/minhas-reservas/",
+                    params={"numero_apartamento": numero_apartamento},
+                )
+                response.raise_for_status()
+                data = response.json()
+                reservas = data["reservas"]
+                logger.info(f"Minhas reservas: {reservas}")
+                return MinhasReservasResponse(reservas=[MinhaReserva(**reserva) for reserva in reservas])
+        except httpx.HTTPStatusError as e:
+            logger.error(f"Erro ao buscar minhas reservas: {str(e.response)}")
+            return MinhasReservasResponse(reservas=[], error="Erro ao buscar minhas reservas")
+        except Exception as e:
+            logger.error(f"Erro inesperado ao buscar minhas reservas: {str(e)}")
+            return MinhasReservasResponse(reservas=[], error="Erro inesperado ao buscar minhas reservas")
