@@ -14,11 +14,15 @@ IDEIA:
 - [ ] Melhorias nas mensagens de envio de usuario (Validar com outros usuários) (Ruan, Lanna, Pedro Guedes, Lucas, ...)
 - [ ] Mostrar um numero de horarios disponiveis para cada data para facilitar o usuario escolher um horario que tenha opções válidas.
 - [ ] Não Mostrar datas que não tenha mais horários disponiveis
----
+- [ ] Melhorias nos empty states...
+
+MUDANCA DE ARQUITETURA:
 - [ ] Problema: Numero do apartamento não existe, horário conflitante, maximo de agendamentos feitos.
     - [ ] Solução: Continuar o workflow normalmente porem não fazer NADA
     - [ ] Solução 2: Melhorar para ter um feedback de erro
-- [ ] WhatsApp Enquetes (Futuro pois isso talvez vá acabar com a arquitetura que a gente tem atualmente)
+
+ESQUECE ISSO FORA DO MVP!!
+- [ ] WhatsApp Enquetes
 
 - [ ] Pitch deck + vídeo de apresentação (Slide de proposta de forma professional)
 - [ ] Testes finais colocar Lanna para testar realizar agendamentos, tentar "quebrar o sistema"
