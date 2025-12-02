@@ -186,11 +186,9 @@ Bot:  ✅ Reservation confirmed successfully!
 
 ---
 
-## Features
+## Roadmap
 
 - [x] Basic scheduling workflow
 - [x] View existing reservations
-- [x] Automatic reminders system
+- [ ] Automatic reminders system
 - [ ] Cancel reservations via WhatsApp
-- [ ] Multi-language support
-- [ ] Integration with building management systems
